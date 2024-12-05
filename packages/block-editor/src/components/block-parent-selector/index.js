@@ -12,82 +12,76 @@ import { useRef } from '@wordpress/element';
  */
 import useBlockDisplayInformation from '../use-block-display-information';
 import BlockIcon from '../block-icon';
-import { useShowMoversGestures } from '../block-toolbar/utils';
+import { useShowHoveredOrFocusedGestures } from '../block-toolbar/utils';
 import { store as blockEditorStore } from '../../store';
+import { unlock } from '../../lock-unlock';
 
 /**
  * Block parent selector component, displaying the hierarchy of the
  * current block selection as a single icon to "go up" a level.
  *
- * @return {WPComponent} Parent block selector.
+ * @return {Component} Parent block selector.
  */
 export default function BlockParentSelector() {
-	const { selectBlock, toggleBlockHighlight } = useDispatch(
-		blockEditorStore
-	);
-	const { firstParentClientId, shouldHide, hasReducedUI } = useSelect(
-		( select ) => {
-			const {
-				getBlockName,
-				getBlockParents,
-				getSelectedBlockClientId,
-				getSettings,
-			} = select( blockEditorStore );
-			const { hasBlockSupport } = select( blocksStore );
-			const selectedBlockClientId = getSelectedBlockClientId();
-			const parents = getBlockParents( selectedBlockClientId );
-			const _firstParentClientId = parents[ parents.length - 1 ];
-			const parentBlockName = getBlockName( _firstParentClientId );
-			const _parentBlockType = getBlockType( parentBlockName );
-			const settings = getSettings();
-			return {
-				firstParentClientId: _firstParentClientId,
-				shouldHide: ! hasBlockSupport(
+	const { selectBlock } = useDispatch( blockEditorStore );
+	const { parentClientId, isVisible } = useSelect( ( select ) => {
+		const {
+			getBlockName,
+			getBlockParents,
+			getSelectedBlockClientId,
+			getBlockEditingMode,
+			getParentSectionBlock,
+		} = unlock( select( blockEditorStore ) );
+		const { hasBlockSupport } = select( blocksStore );
+		const selectedBlockClientId = getSelectedBlockClientId();
+		const parentSection = getParentSectionBlock( selectedBlockClientId );
+		const parents = getBlockParents( selectedBlockClientId );
+		const _parentClientId = parentSection ?? parents[ parents.length - 1 ];
+		const parentBlockName = getBlockName( _parentClientId );
+		const _parentBlockType = getBlockType( parentBlockName );
+		return {
+			parentClientId: _parentClientId,
+			isVisible:
+				_parentClientId &&
+				getBlockEditingMode( _parentClientId ) !== 'disabled' &&
+				hasBlockSupport(
 					_parentBlockType,
 					'__experimentalParentSelector',
 					true
 				),
-				hasReducedUI: settings.hasReducedUI,
-			};
-		},
-		[]
-	);
-	const blockInformation = useBlockDisplayInformation( firstParentClientId );
+		};
+	}, [] );
+	const blockInformation = useBlockDisplayInformation( parentClientId );
 
 	// Allows highlighting the parent block outline when focusing or hovering
 	// the parent block selector within the child.
 	const nodeRef = useRef();
-	const { gestures: showMoversGestures } = useShowMoversGestures( {
+	const showHoveredOrFocusedGestures = useShowHoveredOrFocusedGestures( {
 		ref: nodeRef,
-		onChange( isFocused ) {
-			if ( isFocused && hasReducedUI ) {
-				return;
-			}
-			toggleBlockHighlight( firstParentClientId, isFocused );
-		},
+		highlightParent: true,
 	} );
 
-	if ( shouldHide || firstParentClientId === undefined ) {
+	if ( ! isVisible ) {
 		return null;
 	}
 
 	return (
 		<div
 			className="block-editor-block-parent-selector"
-			key={ firstParentClientId }
+			key={ parentClientId }
 			ref={ nodeRef }
-			{ ...showMoversGestures }
+			{ ...showHoveredOrFocusedGestures }
 		>
 			<ToolbarButton
 				className="block-editor-block-parent-selector__button"
-				onClick={ () => selectBlock( firstParentClientId ) }
+				onClick={ () => selectBlock( parentClientId ) }
 				label={ sprintf(
 					/* translators: %s: Name of the block's parent. */
-					__( 'Select %s' ),
-					blockInformation.title
+					__( 'Select parent block: %s' ),
+					blockInformation?.title
 				) }
 				showTooltip
-				icon={ <BlockIcon icon={ blockInformation.icon } /> }
+				icon={ <BlockIcon icon={ blockInformation?.icon } /> }
 			/>
 		</div>
 	);

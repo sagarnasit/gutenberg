@@ -2,8 +2,11 @@
  * Internal dependencies
  */
 import { VisuallyHidden } from '../visually-hidden';
-import { Label as BaseLabel } from './styles/input-control-styles';
-import type { PolymorphicComponentProps } from '../ui/context';
+import {
+	Label as BaseLabel,
+	LabelWrapper,
+} from './styles/input-control-styles';
+import type { WordPressComponentProps } from '../context';
 import type { InputControlLabelProps } from './types';
 
 export default function Label( {
@@ -11,8 +14,10 @@ export default function Label( {
 	hideLabelFromVision,
 	htmlFor,
 	...props
-}: PolymorphicComponentProps< InputControlLabelProps, 'label', false > ) {
-	if ( ! children ) return null;
+}: WordPressComponentProps< InputControlLabelProps, 'label', false > ) {
+	if ( ! children ) {
+		return null;
+	}
 
 	if ( hideLabelFromVision ) {
 		return (
@@ -23,8 +28,10 @@ export default function Label( {
 	}
 
 	return (
-		<BaseLabel htmlFor={ htmlFor } { ...props }>
-			{ children }
-		</BaseLabel>
+		<LabelWrapper>
+			<BaseLabel htmlFor={ htmlFor } { ...props }>
+				{ children }
+			</BaseLabel>
+		</LabelWrapper>
 	);
 }

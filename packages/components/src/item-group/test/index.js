@@ -1,23 +1,23 @@
 /**
  * External dependencies
  */
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 /**
  * Internal dependencies
  */
 import { Item, ItemGroup } from '..';
-//  import { CONFIG } from '../../utils';
 
 describe( 'ItemGroup', () => {
 	describe( 'ItemGroup component', () => {
 		it( 'should render correctly', () => {
-			const wrapper = render(
+			const { container } = render(
 				<ItemGroup>
 					<Item>Code is poetry</Item>
 				</ItemGroup>
 			);
-			expect( wrapper.container.firstChild ).toMatchSnapshot();
+			expect( container ).toMatchSnapshot();
 		} );
 
 		it( 'should show borders when the isBordered prop is true', () => {
@@ -29,14 +29,12 @@ describe( 'ItemGroup', () => {
 			);
 
 			const { container: withBorders } = render(
-				<ItemGroup isBordered={ true }>
+				<ItemGroup isBordered>
 					<Item>Code is poetry</Item>
 				</ItemGroup>
 			);
 
-			expect( noBorders.firstChild ).toMatchDiffSnapshot(
-				withBorders.firstChild
-			);
+			expect( noBorders ).toMatchDiffSnapshot( withBorders );
 		} );
 
 		it( 'should show rounded corners when the isRounded prop is true', () => {
@@ -53,9 +51,7 @@ describe( 'ItemGroup', () => {
 				</ItemGroup>
 			);
 
-			expect( roundCorners.firstChild ).toMatchDiffSnapshot(
-				squaredCorners.firstChild
-			);
+			expect( roundCorners ).toMatchDiffSnapshot( squaredCorners );
 		} );
 
 		it( 'should render items individually when the isSeparated prop is true', () => {
@@ -66,31 +62,48 @@ describe( 'ItemGroup', () => {
 				</ItemGroup>
 			);
 
-			const { container: seperatedItems } = render(
-				<ItemGroup isSeparated={ true }>
+			const { container: separatedItems } = render(
+				<ItemGroup isSeparated>
 					<Item>Code is poetry</Item>
 				</ItemGroup>
 			);
 
-			expect( groupedItems.firstChild ).toMatchDiffSnapshot(
-				seperatedItems.firstChild
-			);
+			expect( groupedItems ).toMatchDiffSnapshot( separatedItems );
 		} );
 	} );
 
 	describe( 'Item', () => {
-		it( 'should render a button with the isAction prop is true', () => {
-			// By default, `isAction` is `false`
-			const { container: normalItem } = render(
-				<Item>Code is poetry</Item>
-			);
-			const { container: actionItem } = render(
-				<Item isAction={ true }>Code is poetry</Item>
+		it( 'should render as a `button` if the `onClick` handler is specified', async () => {
+			const user = userEvent.setup();
+			const spy = jest.fn();
+			render( <Item onClick={ spy }>Code is poetry</Item> );
+
+			const button = screen.getByRole( 'button' );
+
+			expect( button ).toBeInTheDocument();
+
+			await user.click( button );
+
+			expect( spy ).toHaveBeenCalled();
+		} );
+
+		it( 'should give priority to the `as` prop even if the `onClick` handler is specified', () => {
+			const spy = jest.fn();
+			const { rerender } = render(
+				<Item onClick={ spy }>Code is poetry</Item>
 			);
 
-			expect( normalItem.firstChild ).toMatchDiffSnapshot(
-				actionItem.firstChild
+			expect( screen.getByRole( 'button' ) ).toBeInTheDocument();
+			expect( screen.queryByRole( 'label' ) ).not.toBeInTheDocument();
+
+			rerender(
+				<Item as="a" href="#" onClick={ spy }>
+					Code is poetry
+				</Item>
 			);
+
+			expect( screen.queryByRole( 'button' ) ).not.toBeInTheDocument();
+			expect( screen.getByRole( 'link' ) ).toBeInTheDocument();
 		} );
 
 		it( 'should use different amounts of padding depending on the value of the size prop', () => {
@@ -103,9 +116,7 @@ describe( 'ItemGroup', () => {
 				<Item size="large">Code is poetry</Item>
 			);
 
-			expect( mediumSize.firstChild ).toMatchDiffSnapshot(
-				largeSize.firstChild
-			);
+			expect( mediumSize ).toMatchDiffSnapshot( largeSize );
 		} );
 
 		it( 'should read the value of the size prop from context when the prop is not defined', () => {
@@ -128,9 +139,7 @@ describe( 'ItemGroup', () => {
 				</ItemGroup>
 			);
 
-			expect( mediumSize.firstChild ).toMatchDiffSnapshot(
-				largeSize.firstChild
-			);
+			expect( mediumSize ).toMatchDiffSnapshot( largeSize );
 		} );
 	} );
 } );

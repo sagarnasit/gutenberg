@@ -1,8 +1,4 @@
 /**
- * External dependencies
- */
-import { noop } from 'lodash';
-/**
  * WordPress dependencies
  */
 import { __ } from '@wordpress/i18n';
@@ -10,8 +6,10 @@ import { DOWN } from '@wordpress/keycodes';
 import {
 	ToolbarButton,
 	Dropdown,
-	__experimentalAlignmentMatrixControl as AlignmentMatrixControl,
+	AlignmentMatrixControl,
 } from '@wordpress/components';
+
+const noop = () => {};
 
 function BlockAlignmentMatrixControl( props ) {
 	const {
@@ -22,15 +20,10 @@ function BlockAlignmentMatrixControl( props ) {
 	} = props;
 
 	const icon = <AlignmentMatrixControl.Icon value={ value } />;
-	const className = 'block-editor-block-alignment-matrix-control';
-	const popoverClassName = `${ className }__popover`;
-	const isAlternate = true;
 
 	return (
 		<Dropdown
-			position="bottom right"
-			className={ className }
-			popoverProps={ { className: popoverClassName, isAlternate } }
+			popoverProps={ { placement: 'bottom-start' } }
 			renderToggle={ ( { onToggle, isOpen } ) => {
 				const openOnArrowDown = ( event ) => {
 					if ( ! isOpen && event.keyCode === DOWN ) {

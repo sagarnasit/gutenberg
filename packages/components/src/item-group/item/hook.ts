@@ -1,25 +1,23 @@
 /**
- * External dependencies
+ * WordPress dependencies
  */
-// eslint-disable-next-line no-restricted-imports
-import type { ElementType } from 'react';
+import { useMemo } from '@wordpress/element';
 
 /**
  * Internal dependencies
  */
-import { useContextSystem, PolymorphicComponentProps } from '../../ui/context';
+import type { WordPressComponentProps } from '../../context';
+import { useContextSystem } from '../../context';
 import * as styles from '../styles';
 import { useItemGroupContext } from '../context';
 import { useCx } from '../../utils/hooks/use-cx';
 import type { ItemProps } from '../types';
 
-export function useItem(
-	props: PolymorphicComponentProps< ItemProps, 'div' >
-) {
+export function useItem( props: WordPressComponentProps< ItemProps, 'div' > ) {
 	const {
-		isAction = false,
 		as: asProp,
 		className,
+		onClick,
 		role = 'listitem',
 		size: sizeProp,
 		...otherProps
@@ -29,16 +27,21 @@ export function useItem(
 
 	const size = sizeProp || contextSize;
 
-	const as = ( asProp || isAction ? 'button' : 'div' ) as ElementType;
+	const as = asProp || ( typeof onClick !== 'undefined' ? 'button' : 'div' );
 
 	const cx = useCx();
 
-	const classes = cx(
-		isAction && styles.unstyledButton,
-		styles.itemSizes[ size ] || styles.itemSizes.medium,
-		styles.item,
-		spacedAround && styles.spacedAround,
-		className
+	const classes = useMemo(
+		() =>
+			cx(
+				( as === 'button' || as === 'a' ) &&
+					styles.unstyledButton( as ),
+				styles.itemSizes[ size ] || styles.itemSizes.medium,
+				styles.item,
+				spacedAround && styles.spacedAround,
+				className
+			),
+		[ as, className, cx, size, spacedAround ]
 	);
 
 	const wrapperClassName = cx( styles.itemWrapper );
@@ -46,6 +49,7 @@ export function useItem(
 	return {
 		as,
 		className: classes,
+		onClick,
 		wrapperClassName,
 		role,
 		...otherProps,

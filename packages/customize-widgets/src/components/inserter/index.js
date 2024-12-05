@@ -18,8 +18,10 @@ function Inserter( { setIsOpened } ) {
 		Inserter,
 		'customize-widget-layout__inserter-panel-title'
 	);
-	const insertionPoint = useSelect( ( select ) =>
-		select( customizeWidgetsStore ).__experimentalGetInsertionPoint()
+	const insertionPoint = useSelect(
+		( select ) =>
+			select( customizeWidgetsStore ).__experimentalGetInsertionPoint(),
+		[]
 	);
 
 	return (
@@ -35,7 +37,7 @@ function Inserter( { setIsOpened } ) {
 					{ __( 'Add a block' ) }
 				</h2>
 				<Button
-					className="customize-widgets-layout__inserter-panel-header-close-button"
+					size="small"
 					icon={ closeSmall }
 					onClick={ () => setIsOpened( false ) }
 					aria-label={ __( 'Close inserter' ) }

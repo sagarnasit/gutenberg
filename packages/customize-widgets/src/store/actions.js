@@ -1,22 +1,4 @@
 /**
- * Returns an action object used to toggle a feature flag.
- *
- * This function is unstable, as it is mostly copied from the edit-post
- * package. Editor features and preferences have a lot of scope for
- * being generalized and refactored.
- *
- * @param {string} feature Feature name.
- *
- * @return {Object} Action object.
- */
-export function __unstableToggleFeature( feature ) {
-	return {
-		type: 'TOGGLE_FEATURE',
-		feature,
-	};
-}
-
-/**
  * Returns an action object used to open/close the inserter.
  *
  * @param {boolean|Object} value                Whether the inserter should be
@@ -25,6 +7,31 @@ export function __unstableToggleFeature( feature ) {
  *                                              use an object.
  * @param {string}         value.rootClientId   The root client ID to insert at.
  * @param {number}         value.insertionIndex The index to insert at.
+ *
+ * @example
+ * ```js
+ * import { useState } from 'react';
+ * import { store as customizeWidgetsStore } from '@wordpress/customize-widgets';
+ * import { __ } from '@wordpress/i18n';
+ * import { useDispatch } from '@wordpress/data';
+ * import { Button } from '@wordpress/components';
+ *
+ * const ExampleComponent = () => {
+ *   const { setIsInserterOpened } = useDispatch( customizeWidgetsStore );
+ *   const [ isOpen, setIsOpen ] = useState( false );
+ *
+ *    return (
+ *        <Button
+ *            onClick={ () => {
+ *                setIsInserterOpened( ! isOpen );
+ *                setIsOpen( ! isOpen );
+ *            } }
+ *        >
+ *            { __( 'Open/close inserter' ) }
+ *        </Button>
+ *    );
+ * };
+ * ```
  *
  * @return {Object} Action object.
  */

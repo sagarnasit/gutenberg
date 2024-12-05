@@ -7,14 +7,15 @@ TreeSelect component is used to generate select input fields.
 Render a user interface to select the parent page in a hierarchy of pages:
 
 ```jsx
+import { useState } from 'react';
 import { TreeSelect } from '@wordpress/components';
-import { useState } from '@wordpress/element';
 
 const MyTreeSelect = () => {
 	const [ page, setPage ] = useState( 'p21' );
 
 	return (
 		<TreeSelect
+		  __nextHasNoMarginBottom
 			label="Parent page"
 			noOptionLabel="No parent page"
 			onChange={ ( newPage ) => setPage( newPage ) }
@@ -80,12 +81,20 @@ A function that receives the id of the new node element that is being selected.
 
 The id of the currently selected node.
 
--   Type: `Object`
+-   Type: `string` | `string[]`
 -   Required: No
 
 ### tree
 
 An array containing the tree objects with the possible nodes the user can select.
 
--   Type: `String`
+-   Type: `Object[]`
 -   Required: No
+
+#### __nextHasNoMarginBottom
+
+Start opting into the new margin-free styles that will become the default in a future version.
+
+-   Type: `Boolean`
+-   Required: No
+-   Default: `false`

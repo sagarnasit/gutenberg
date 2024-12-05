@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * WordPress dependencies
@@ -23,12 +23,16 @@ import { store as blockEditorStore } from '../../store';
 const SEARCH_THRESHOLD = 6;
 const SHOWN_BLOCK_TYPES = 6;
 const SHOWN_BLOCK_PATTERNS = 2;
+const SHOWN_BLOCK_PATTERNS_WITH_PRIORITIZATION = 4;
 
 export default function QuickInserter( {
 	onSelect,
 	rootClientId,
 	clientId,
 	isAppender,
+	prioritizePatterns,
+	selectBlockOnInsert,
+	hasSearch = true,
 } ) {
 	const [ filterValue, setFilterValue ] = useState( '' );
 	const [ destinationRootClientId, onInsertBlocks ] = useInsertionPoint( {
@@ -36,35 +40,42 @@ export default function QuickInserter( {
 		rootClientId,
 		clientId,
 		isAppender,
+		selectBlockOnInsert,
 	} );
 	const [ blockTypes ] = useBlockTypesState(
 		destinationRootClientId,
-		onInsertBlocks
+		onInsertBlocks,
+		true
 	);
-
 	const [ patterns ] = usePatternsState(
 		onInsertBlocks,
-		destinationRootClientId
+		destinationRootClientId,
+		undefined,
+		true
 	);
-	const showPatterns = patterns.length && !! filterValue;
-	const showSearch =
-		( showPatterns && patterns.length > SEARCH_THRESHOLD ) ||
-		blockTypes.length > SEARCH_THRESHOLD;
 
 	const { setInserterIsOpened, insertionIndex } = useSelect(
 		( select ) => {
-			const { getSettings, getBlockIndex, getBlockCount } = select(
-				blockEditorStore
-			);
-			const index = getBlockIndex( clientId, rootClientId );
+			const { getSettings, getBlockIndex, getBlockCount } =
+				select( blockEditorStore );
+			const settings = getSettings();
+			const index = getBlockIndex( clientId );
+			const blockCount = getBlockCount();
+
 			return {
-				setInserterIsOpened: getSettings()
-					.__experimentalSetIsInserterOpened,
-				insertionIndex: index === -1 ? getBlockCount() : index,
+				setInserterIsOpened: settings.__experimentalSetIsInserterOpened,
+				insertionIndex: index === -1 ? blockCount : index,
 			};
 		},
-		[ clientId, rootClientId ]
+		[ clientId ]
 	);
+
+	const showPatterns =
+		patterns.length && ( !! filterValue || prioritizePatterns );
+	const showSearch =
+		hasSearch &&
+		( ( showPatterns && patterns.length > SEARCH_THRESHOLD ) ||
+			blockTypes.length > SEARCH_THRESHOLD );
 
 	useEffect( () => {
 		if ( setInserterIsOpened ) {
@@ -73,26 +84,39 @@ export default function QuickInserter( {
 	}, [ setInserterIsOpened ] );
 
 	// When clicking Browse All select the appropriate block so as
-	// the insertion point can work as expected
+	// the insertion point can work as expected.
 	const onBrowseAll = () => {
-		setInserterIsOpened( { rootClientId, insertionIndex } );
+		setInserterIsOpened( {
+			filterValue,
+			onSelect,
+			rootClientId,
+			insertionIndex,
+		} );
 	};
+
+	let maxBlockPatterns = 0;
+	if ( showPatterns ) {
+		maxBlockPatterns = prioritizePatterns
+			? SHOWN_BLOCK_PATTERNS_WITH_PRIORITIZATION
+			: SHOWN_BLOCK_PATTERNS;
+	}
 
 	return (
 		<div
-			className={ classnames( 'block-editor-inserter__quick-inserter', {
+			className={ clsx( 'block-editor-inserter__quick-inserter', {
 				'has-search': showSearch,
 				'has-expand': setInserterIsOpened,
 			} ) }
 		>
 			{ showSearch && (
 				<SearchControl
+					__nextHasNoMarginBottom
 					className="block-editor-inserter__search"
 					value={ filterValue }
 					onChange={ ( value ) => {
 						setFilterValue( value );
 					} }
-					label={ __( 'Search for blocks and patterns' ) }
+					label={ __( 'Search' ) }
 					placeholder={ __( 'Search' ) }
 				/>
 			) }
@@ -104,14 +128,18 @@ export default function QuickInserter( {
 					rootClientId={ rootClientId }
 					clientId={ clientId }
 					isAppender={ isAppender }
-					maxBlockPatterns={ showPatterns ? SHOWN_BLOCK_PATTERNS : 0 }
+					maxBlockPatterns={ maxBlockPatterns }
 					maxBlockTypes={ SHOWN_BLOCK_TYPES }
 					isDraggable={ false }
+					prioritizePatterns={ prioritizePatterns }
+					selectBlockOnInsert={ selectBlockOnInsert }
+					isQuick
 				/>
 			</div>
 
 			{ setInserterIsOpened && (
 				<Button
+					__next40pxDefaultSize
 					className="block-editor-inserter__quick-inserter-expand"
 					onClick={ onBrowseAll }
 					aria-label={ __(

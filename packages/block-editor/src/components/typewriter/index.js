@@ -16,8 +16,9 @@ const arrowKeyCodes = new Set( [ UP, DOWN, LEFT, RIGHT ] );
 const initialTriggerPercentage = 0.75;
 
 export function useTypewriter() {
-	const hasSelectedBlock = useSelect( ( select ) =>
-		select( blockEditorStore ).hasSelectedBlock()
+	const hasSelectedBlock = useSelect(
+		( select ) => select( blockEditorStore ).hasSelectedBlock(),
+		[]
 	);
 
 	return useRefEffect(
@@ -104,7 +105,9 @@ export function useTypewriter() {
 					return;
 				}
 
-				const windowScroll = scrollContainer === ownerDocument.body;
+				const windowScroll =
+					scrollContainer === ownerDocument.body ||
+					scrollContainer === ownerDocument.documentElement;
 				const scrollY = windowScroll
 					? defaultView.scrollY
 					: scrollContainer.scrollTop;
@@ -270,7 +273,7 @@ function Typewriter( { children } ) {
  * challenges in Internet Explorer, and is simply skipped, rendering the given
  * props children instead.
  *
- * @type {WPComponent}
+ * @type {Component}
  */
 const TypewriterOrIEBypass = isIE ? ( props ) => props.children : Typewriter;
 

@@ -1,18 +1,20 @@
 /**
  * External dependencies
  */
-import { noop } from 'lodash';
+import { v4 as uuid } from 'uuid';
 
 /**
  * WordPress dependencies
  */
-import { select } from '@wordpress/data';
+import { select, dispatch } from '@wordpress/data';
 import { uploadMedia } from '@wordpress/media-utils';
 
 /**
  * Internal dependencies
  */
 import { store as editorStore } from '../../store';
+
+const noop = () => {};
 
 /**
  * Upload a media file when the file upload button is activated.
@@ -34,21 +36,58 @@ export default function mediaUpload( {
 	onError = noop,
 	onFileChange,
 } ) {
-	const { getCurrentPostId, getEditorSettings } = select( editorStore );
+	const { getCurrentPost, getEditorSettings } = select( editorStore );
+	const {
+		lockPostAutosaving,
+		unlockPostAutosaving,
+		lockPostSaving,
+		unlockPostSaving,
+	} = dispatch( editorStore );
+
 	const wpAllowedMimeTypes = getEditorSettings().allowedMimeTypes;
+	const lockKey = `image-upload-${ uuid() }`;
+	let imageIsUploading = false;
 	maxUploadFileSize =
 		maxUploadFileSize || getEditorSettings().maxUploadFileSize;
+	const currentPost = getCurrentPost();
+	// Templates and template parts' numerical ID is stored in `wp_id`.
+	const currentPostId =
+		typeof currentPost?.id === 'number'
+			? currentPost.id
+			: currentPost?.wp_id;
+	const setSaveLock = () => {
+		lockPostSaving( lockKey );
+		lockPostAutosaving( lockKey );
+		imageIsUploading = true;
+	};
+
+	const postData = currentPostId ? { post: currentPostId } : {};
+	const clearSaveLock = () => {
+		unlockPostSaving( lockKey );
+		unlockPostAutosaving( lockKey );
+		imageIsUploading = false;
+	};
 
 	uploadMedia( {
 		allowedTypes,
 		filesList,
-		onFileChange,
+		onFileChange: ( file ) => {
+			if ( ! imageIsUploading ) {
+				setSaveLock();
+			} else {
+				clearSaveLock();
+			}
+			onFileChange( file );
+		},
 		additionalData: {
-			post: getCurrentPostId(),
+			...postData,
 			...additionalData,
 		},
 		maxUploadFileSize,
-		onError: ( { message } ) => onError( message ),
+		onError: ( { message } ) => {
+			clearSaveLock();
+			onError( message );
+		},
 		wpAllowedMimeTypes,
 	} );
 }

@@ -2,6 +2,10 @@
 /**
  * Dimensions block support flag.
  *
+ * This does not include the `spacing` block support even though that visually
+ * appears under the "Dimensions" panel in the editor. It remains in its
+ * original `spacing.php` file for compatibility with core.
+ *
  * @package gutenberg
  */
 
@@ -21,10 +25,9 @@ function gutenberg_register_dimensions_support( $block_type ) {
 		return;
 	}
 
-	$has_spacing_support = gutenberg_block_has_support( $block_type, array( 'spacing' ), false );
-	// Future block supports such as height & width will be added here.
+	$has_dimensions_support = block_has_support( $block_type, array( 'dimensions' ), false );
 
-	if ( $has_spacing_support ) {
+	if ( $has_dimensions_support ) {
 		$block_type->attributes['style'] = array(
 			'type' => 'object',
 		);
@@ -38,79 +41,119 @@ function gutenberg_register_dimensions_support( $block_type ) {
  * @param WP_Block_Type $block_type       Block Type.
  * @param array         $block_attributes Block attributes.
  *
- * @return array Block spacing CSS classes and inline styles.
+ * @return array Block dimensions CSS classes and inline styles.
  */
-function gutenberg_apply_dimensions_support( $block_type, $block_attributes ) {
-	$spacing_styles = gutenberg_apply_spacing_support( $block_type, $block_attributes );
-	// Future block supports such as height and width will be added here.
-
-	return $spacing_styles;
-}
-
-/**
- * Add CSS classes for block spacing to the incoming attributes array.
- * This will be applied to the block markup in the front-end.
- *
- * @param WP_Block_Type $block_type       Block Type.
- * @param array         $block_attributes Block attributes.
- *
- * @return array Block spacing CSS classes and inline styles.
- */
-function gutenberg_apply_spacing_support( $block_type, $block_attributes ) {
-	if ( gutenberg_skip_spacing_serialization( $block_type ) ) {
+function gutenberg_apply_dimensions_support( $block_type, $block_attributes ) { // phpcs:ignore VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable
+	if ( wp_should_skip_block_supports_serialization( $block_type, 'dimensions' ) ) {
 		return array();
 	}
 
-	$has_padding_support = gutenberg_block_has_support( $block_type, array( 'spacing', 'padding' ), false );
-	$has_margin_support  = gutenberg_block_has_support( $block_type, array( 'spacing', 'margin' ), false );
-	$styles              = array();
+	$attributes = array();
 
-	if ( $has_padding_support ) {
-		$padding_value = _wp_array_get( $block_attributes, array( 'style', 'spacing', 'padding' ), null );
+	// Width support to be added in near future.
 
-		if ( is_array( $padding_value ) ) {
-			foreach ( $padding_value as $key => $value ) {
-				$styles[] = sprintf( 'padding-%s: %s;', $key, $value );
-			}
-		} elseif ( null !== $padding_value ) {
-			$styles[] = sprintf( 'padding: %s;', $padding_value );
-		}
+	$has_min_height_support = block_has_support( $block_type, array( 'dimensions', 'minHeight' ), false );
+	$block_styles           = isset( $block_attributes['style'] ) ? $block_attributes['style'] : null;
+
+	if ( ! $block_styles ) {
+		return $attributes;
 	}
 
-	if ( $has_margin_support ) {
-		$margin_value = _wp_array_get( $block_attributes, array( 'style', 'spacing', 'margin' ), null );
+	$skip_min_height                      = wp_should_skip_block_supports_serialization( $block_type, 'dimensions', 'minHeight' );
+	$dimensions_block_styles              = array();
+	$dimensions_block_styles['minHeight'] = null;
+	if ( $has_min_height_support && ! $skip_min_height ) {
+		$dimensions_block_styles['minHeight'] = $block_styles['dimensions']['minHeight'] ?? null;
+	}
+	$styles = gutenberg_style_engine_get_styles( array( 'dimensions' => $dimensions_block_styles ) );
 
-		if ( is_array( $margin_value ) ) {
-			foreach ( $margin_value as $key => $value ) {
-				$styles[] = sprintf( 'margin-%s: %s;', $key, $value );
-			}
-		} elseif ( null !== $margin_value ) {
-			$styles[] = sprintf( 'margin: %s;', $margin_value );
-		}
+	if ( ! empty( $styles['css'] ) ) {
+		$attributes['style'] = $styles['css'];
 	}
 
-	return empty( $styles ) ? array() : array( 'style' => implode( ' ', $styles ) );
+	return $attributes;
 }
 
 /**
- * Checks whether serialization of the current block's spacing properties should
- * occur.
+ * Renders server-side dimensions styles to the block wrapper.
+ * This block support uses the `render_block` hook to ensure that
+ * it is also applied to non-server-rendered blocks.
  *
- * @param WP_Block_type $block_type Block type.
- *
- * @return boolean Whether to serialize spacing support styles & classes.
+ * @param  string $block_content Rendered block content.
+ * @param  array  $block         Block object.
+ * @return string                Filtered block content.
  */
-function gutenberg_skip_spacing_serialization( $block_type ) {
-	$spacing_support = _wp_array_get( $block_type->supports, array( 'spacing' ), false );
+function gutenberg_render_dimensions_support( $block_content, $block ) {
+	$block_type               = WP_Block_Type_Registry::get_instance()->get_registered( $block['blockName'] );
+	$block_attributes         = ( isset( $block['attrs'] ) && is_array( $block['attrs'] ) ) ? $block['attrs'] : array();
+	$has_aspect_ratio_support = block_has_support( $block_type, array( 'dimensions', 'aspectRatio' ), false );
 
-	return is_array( $spacing_support ) &&
-		array_key_exists( '__experimentalSkipSerialization', $spacing_support ) &&
-		$spacing_support['__experimentalSkipSerialization'];
+	if (
+		! $has_aspect_ratio_support ||
+		wp_should_skip_block_supports_serialization( $block_type, 'dimensions', 'aspectRatio' )
+	) {
+		return $block_content;
+	}
+
+	$dimensions_block_styles                = array();
+	$dimensions_block_styles['aspectRatio'] = $block_attributes['style']['dimensions']['aspectRatio'] ?? null;
+
+	// To ensure the aspect ratio does not get overridden by `minHeight` unset any existing rule.
+	if (
+		isset( $dimensions_block_styles['aspectRatio'] )
+	) {
+		$dimensions_block_styles['minHeight'] = 'unset';
+	} elseif (
+		isset( $block_attributes['style']['dimensions']['minHeight'] ) ||
+		isset( $block_attributes['minHeight'] )
+	) {
+		$dimensions_block_styles['aspectRatio'] = 'unset';
+	}
+
+	$styles = gutenberg_style_engine_get_styles( array( 'dimensions' => $dimensions_block_styles ) );
+
+	if ( ! empty( $styles['css'] ) ) {
+		// Inject dimensions styles to the first element, presuming it's the wrapper, if it exists.
+		$tags = new WP_HTML_Tag_Processor( $block_content );
+
+		if ( $tags->next_tag() ) {
+			$existing_style = $tags->get_attribute( 'style' );
+			$updated_style  = '';
+
+			if ( ! empty( $existing_style ) ) {
+				$updated_style = $existing_style;
+				if ( ! str_ends_with( $existing_style, ';' ) ) {
+					$updated_style .= ';';
+				}
+			}
+
+			$updated_style .= $styles['css'];
+			$tags->set_attribute( 'style', $updated_style );
+
+			if ( ! empty( $styles['classnames'] ) ) {
+				foreach ( explode( ' ', $styles['classnames'] ) as $class_name ) {
+					if (
+						str_contains( $class_name, 'aspect-ratio' ) &&
+						! isset( $block_attributes['style']['dimensions']['aspectRatio'] )
+					) {
+						continue;
+					}
+					$tags->add_class( $class_name );
+				}
+			}
+		}
+
+		return $tags->get_updated_html();
+	}
+
+	return $block_content;
 }
+
+add_filter( 'render_block', 'gutenberg_render_dimensions_support', 10, 2 );
 
 // Register the block support.
 WP_Block_Supports::get_instance()->register(
-	'spacing', // This is deliberately `spacing` instead of `dimensions` for backwards compatibility.
+	'dimensions',
 	array(
 		'register_attribute' => 'gutenberg_register_dimensions_support',
 		'apply'              => 'gutenberg_apply_dimensions_support',

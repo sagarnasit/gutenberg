@@ -53,8 +53,9 @@ function isKeyDownEligibleForStartTyping( event ) {
  * element.
  */
 export function useMouseMoveTypingReset() {
-	const isTyping = useSelect( ( select ) =>
-		select( blockEditorStore ).isTyping()
+	const isTyping = useSelect(
+		( select ) => select( blockEditorStore ).isTyping(),
+		[]
 	);
 	const { stopTyping } = useDispatch( blockEditorStore );
 
@@ -114,9 +115,12 @@ export function useMouseMoveTypingReset() {
  *   field, presses ESC or TAB, or moves the mouse in the document.
  */
 export function useTypingObserver() {
-	const isTyping = useSelect( ( select ) =>
-		select( blockEditorStore ).isTyping()
-	);
+	const { isTyping } = useSelect( ( select ) => {
+		const { isTyping: _isTyping } = select( blockEditorStore );
+		return {
+			isTyping: _isTyping(),
+		};
+	}, [] );
 	const { startTyping, stopTyping } = useDispatch( blockEditorStore );
 
 	const ref1 = useMouseMoveTypingReset();
@@ -124,6 +128,7 @@ export function useTypingObserver() {
 		( node ) => {
 			const { ownerDocument } = node;
 			const { defaultView } = ownerDocument;
+			const selection = defaultView.getSelection();
 
 			// Listeners to stop typing should only be added when typing.
 			// Listeners to start typing should only be added when not typing.
@@ -169,18 +174,14 @@ export function useTypingObserver() {
 				 * uncollapsed (shift) selection.
 				 */
 				function stopTypingOnSelectionUncollapse() {
-					const selection = defaultView.getSelection();
-					const isCollapsed =
-						selection.rangeCount > 0 &&
-						selection.getRangeAt( 0 ).collapsed;
-
-					if ( ! isCollapsed ) {
+					if ( ! selection.isCollapsed ) {
 						stopTyping();
 					}
 				}
 
 				node.addEventListener( 'focus', stopTypingOnNonTextField );
 				node.addEventListener( 'keydown', stopTypingOnEscapeKey );
+
 				ownerDocument.addEventListener(
 					'selectionchange',
 					stopTypingOnSelectionUncollapse
